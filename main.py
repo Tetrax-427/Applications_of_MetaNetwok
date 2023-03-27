@@ -1,11 +1,15 @@
 import argparse
 import torch.optim
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn.functional as functional
+import torch.nn as nn
+
 from meta import *
 from model import *
 from data import *
 from utils import *
-
+from rho import *
+from teachr import *
 
 #for torch export LD_LIBRARY_PATH=/home/nishantjn/.local/lib/python3.8/site-packages/nvidia/cublas/lib/:$LD_LIBRARY_PATH
 
@@ -55,15 +59,28 @@ def revar():
     set_seed(seed=args.seed)
     writer = SummaryWriter(log_dir='../logs')
 
-    teacher = ResNet10_l( 10, adaptive_pool= False )
-    rho =    Net() 
+    #Path_teacher = "./teacher_model"
+    #Path_rho = "./rho_model"
+    
+    #teacher = torch.load(Path_teacher)
+    #rho =    torch.load(Path_rho)
+    
+    Teacher=ResNet10_l( 10 )
+    Teacher.to(args.device)
+    
+    rho = Net()
+    rho.to(args.device)
+
+
+    train_teacher(Teacher)
+    train_rho(rho)
     
     if not args.inst_based:
         meta_net = MLP(hidden_size=args.meta_net_hidden_size, num_layers=args.meta_net_num_layers).to(device=args.device)
     else:
-        meta_net = InstanceMetaNet(input_size=args.input_size).to(device=args.device)
+        meta_net = Modified_MetaLearner(input_size=args.input_size).to(device=args.device)
     
-    net = ResNet32(args.num_classes).to(device=args.device)
+    net = ResNet10_xxs(args.num_classes).to(device=args.device)
 
     criterion = nn.CrossEntropyLoss().to(device=args.device)
     #criterion_CE= nn.CrossEntropyLoss(reduction="None")
@@ -112,9 +129,6 @@ def revar():
 
     meta_dataloader_iter = iter(meta_dataloader)
 
-    # TRAIN TEACHER.....
-    # TRAIN RHO ........
-    
     for epoch in range(args.max_epoch):
 
         if epoch >= 80 and epoch % 60 == 0:
@@ -131,14 +145,11 @@ def revar():
             rho_output = rho( inputs) 
                 
             if (iteration + 1) % args.meta_interval == 0:
-                pseudo_net = ResNet32(args.num_classes).to(args.device)
+                pseudo_net = ResNet10_xxs(args.num_classes).to(args.device)
                 pseudo_net.load_state_dict(net.state_dict())
                 pseudo_net.train()
 
                 pseudo_outputs = pseudo_net(inputs)
-                
-                
-                
                 pseudo_combined_inputs= torch.cat((teacher_output , rho_output ,  pseudo_outputs),1) 
                 
                 pseudo_loss_CE_vector = functional.cross_entropy(pseudo_outputs, labels.long(), reduction='none')

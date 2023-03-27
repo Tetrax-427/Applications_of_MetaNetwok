@@ -97,6 +97,12 @@ class HiddenLayer(nn.Module):
     def forward(self, x):
         return self.relu(self.fc(x))
 
+def ResNet10_l(num_classes=10):
+    return ResNet32( num_classes=num_classes,num_blocks=[32, 64, 128, 256])  
+
+def ResNet10_xxs(num_classes=10):
+    return ResNet32( num_classes=num_classes, num_blocks=[8, 8, 16, 16])
+
 
 class MLP(nn.Module):
     def __init__(self, hidden_size=100, num_layers=1):
@@ -137,7 +143,6 @@ class InstanceMetaNet(nn.Module):
         # print(out.shape)
         return torch.sigmoid(self.final_layer(out))
     
-
 class Modified_MetaLearner(nn.Module):
     def __init__(self, out_features=16, in_features=3, num_layers=4, input_size=32):
         super(Modified_MetaLearner, self).__init__()
@@ -164,6 +169,8 @@ class Modified_MetaLearner(nn.Module):
         out = out.view(out.size(0),-1)
         # print(out.shape)
         return torch.sigmoid(self.final_layer(out))
+    
+    
 
 
 
