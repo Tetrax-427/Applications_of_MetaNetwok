@@ -9,7 +9,7 @@ from model import *
 from data import *
 from utils import *
 from rho import *
-from teachr import *
+from Teacher import *
 
 #for torch export LD_LIBRARY_PATH=/home/nishantjn/.local/lib/python3.8/site-packages/nvidia/cublas/lib/:$LD_LIBRARY_PATH
 
@@ -69,7 +69,7 @@ def revar():
     Teacher.to(args.device)
     
     rho = Net()
-    rho.to(args.device)
+    #rho.to(args.device)
 
 
     train_teacher(Teacher)
@@ -139,10 +139,11 @@ def revar():
         print('Training...')
         for iteration, (inputs, labels) in enumerate(train_dataloader):
             net.train()
+            rho_output = rho( inputs) 
             inputs, labels = inputs.to(args.device), labels.to(args.device)
 
-            teacher_output = teacher(inputs)
-            rho_output = rho( inputs) 
+            teacher_output = Teacher(inputs)
+            
                 
             if (iteration + 1) % args.meta_interval == 0:
                 pseudo_net = ResNet10_xxs(args.num_classes).to(args.device)
