@@ -75,8 +75,15 @@ def train_teacher(model):
                 device=args.device,
         )
         
+        checkpoint = { 'state_dict': Teacher.state_dict(),'optimizer' :optimizer_T.state_dict()}
+        torch.save(checkpoint, PATH)
+    
     print('Finished Training ....... TEACHER')
 
-#PATH = f'./teacher'
+PATH = f'./teacher_model'
+
+Teacher=ResNet10_l( 10 )
+Teacher.to(args.device)
+train_teacher(Teacher)
 #checkpoint = {'state_dict': Teacher.state_dict(),'optimizer' :optimizer_T.state_dict()}
 #torch.save(checkpoint, PATH)

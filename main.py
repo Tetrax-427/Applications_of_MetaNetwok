@@ -55,25 +55,26 @@ print(args)
 
 
 def revar():
+    tou = 1  # Tempetature of KD
+    
     set_cudnn(device=args.device)
     set_seed(seed=args.seed)
     writer = SummaryWriter(log_dir='../logs')
 
-    #Path_teacher = "./teacher_model"
-    #Path_rho = "./rho_model"
-    
-    #teacher = torch.load(Path_teacher)
-    #rho =    torch.load(Path_rho)
+    Path_teacher = "./teacher_model"
+    Path_rho = "./rho_model"
     
     Teacher=ResNet10_l( 10 )
     Teacher.to(args.device)
     
     rho = Net()
-    #rho.to(args.device)
-
-
-    train_teacher(Teacher)
-    train_rho(rho)
+    rho.to(args.device)
+    
+    Teacher = torch.load(Path_teacher)
+    rho =    torch.load(Path_rho)
+    
+    #train_teacher(Teacher)
+    #train_rho(rho)
     
     if not args.inst_based:
         meta_net = MLP(hidden_size=args.meta_net_hidden_size, num_layers=args.meta_net_num_layers).to(device=args.device)
@@ -139,22 +140,27 @@ def revar():
         print('Training...')
         for iteration, (inputs, labels) in enumerate(train_dataloader):
             net.train()
-            rho_output = rho( inputs) 
+            
+            rho_logs = rho( inputs) 
+            rho_output= nn.Softmax(rho_output)
+            
             inputs, labels = inputs.to(args.device), labels.to(args.device)
 
-            teacher_output = Teacher(inputs)
-            
+            teacher_logs = Teacher(inputs)
+            teacher_output= torch.div(teacher_logs, tou)
+            teacher_output= nn.Softmax(teacher_output)
                 
             if (iteration + 1) % args.meta_interval == 0:
                 pseudo_net = ResNet10_xxs(args.num_classes).to(args.device)
                 pseudo_net.load_state_dict(net.state_dict())
                 pseudo_net.train()
 
-                pseudo_outputs = pseudo_net(inputs)
-                pseudo_combined_inputs= torch.cat((teacher_output , rho_output ,  pseudo_outputs),1) 
+                pseudo_logs = pseudo_net(inputs)
+                pseudo_outputs = nn.Softmax(pseudo_outputs)
+                
+                pseudo_combined_inputs= torch.cat((teacher_logs , rho_logs ,  pseudo_logs),1) 
                 
                 pseudo_loss_CE_vector = functional.cross_entropy(pseudo_outputs, labels.long(), reduction='none')
-                #pseudo_loss_CE_vector = functional.cross_entropy(pseudo_outputs, rho_output, reduction='none')
                 pseudo_loss_CE_vector_reshape = torch.reshape(pseudo_loss_CE_vector, (-1, 1))
                 
                 # need to change meta_net for 2 outputs...
@@ -208,11 +214,15 @@ def revar():
                 meta_loss.backward()
                 meta_optimizer.step()
 
-            outputs = net(inputs)
-            combined_inputs = torch.cat((teacher_output , rho_output , outputs),1) 
+            
+            
+            logs = net(inputs)
+            outputs = torch.div(logs, tou)
+            outputs= nn.Softmax(outputs)
+            
+            combined_inputs = torch.cat((teacher_logs , rho_logs , logs),1) 
             
             loss_CE_vector = functional.cross_entropy(outputs, labels.long(), reduction='none')
-            #loss_CE_vector = functional.cross_entropy(outputs, rho_output, reduction='none')
             loss_CE_vector_reshape = torch.reshape(loss_CE_vector, (-1, 1))
 
             

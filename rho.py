@@ -67,5 +67,9 @@ def train_rho(net):
 
     print('Finished Training  RHO')
 
-#PATH = './rho'
-#torch.save(net, PATH)
+PATH = './rho_model'
+
+net= Net()
+train_rho(net)
+
+torch.save(net, PATH)
