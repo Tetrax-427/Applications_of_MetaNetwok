@@ -1,6 +1,6 @@
 import argparse
 import torch.optim
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as functional
 import torch.nn as nn
 
@@ -59,22 +59,27 @@ def revar():
     
     set_cudnn(device=args.device)
     set_seed(seed=args.seed)
-    writer = SummaryWriter(log_dir='../logs')
+    #writer = SummaryWriter(log_dir='../logs')
 
     Path_teacher = "./teacher_model"
     Path_rho = "./rho_model"
     
-    Teacher=ResNet10_l( 10 )
-    Teacher.to(args.device)
+    
+    Teacher=ResNet10_l( 10 ).to(args.device)
+    optimizer_T = torch.optim.SGD(Teacher.parameters(), lr=0.001, momentum=0.9)
+
+    checkpoint = torch.load(Path_teacher)
+
+    optimizer_T.load_state_dict(checkpoint['optimizer'])
+    Teacher.load_state_dict(checkpoint['state_dict'])
+    
+    print("Teacher loaded....")
     
     rho = Net()
-    rho.to(args.device)
-    
-    Teacher = torch.load(Path_teacher)
     rho =    torch.load(Path_rho)
+    print("RHO loaded....")
+
     
-    #train_teacher(Teacher)
-    #train_rho(rho)
     
     if not args.inst_based:
         meta_net = MLP(hidden_size=args.meta_net_hidden_size, num_layers=args.meta_net_num_layers).to(device=args.device)
@@ -160,7 +165,8 @@ def revar():
                 
                 pseudo_combined_inputs= torch.cat((teacher_logs , rho_logs ,  pseudo_logs),1) 
                 
-                pseudo_loss_CE_vector = functional.cross_entropy(pseudo_outputs, labels.long(), reduction='none')
+                #pseudo_loss_CE_vector = functional.cross_entropy(pseudo_outputs, labels.long(), reduction='none')
+                pseudo_loss_CE_vector = functional.cross_entropy(pseudo_logs, labels.long(), reduction='none')
                 pseudo_loss_CE_vector_reshape = torch.reshape(pseudo_loss_CE_vector, (-1, 1))
                 
                 # need to change meta_net for 2 outputs...
@@ -170,7 +176,8 @@ def revar():
                     pseudo_alpha, pseudo_beta = meta_net(pseudo_combined_inputs)
                   
                 
-                pseudo_loss_KD_vector = functional.kl_div(pseudo_outputs , pseudo_beta*pseudo_outputs + (1- pseudo_beta)*teacher_output, reduction='none')
+                #pseudo_loss_KD_vector = functional.kl_div(pseudo_outputs , pseudo_beta*pseudo_outputs + (1- pseudo_beta)*teacher_output, reduction='none')
+                pseudo_loss_KD_vector = functional.kl_div(pseudo_logs , pseudo_beta*pseudo_logs + (1- pseudo_beta)*teacher_logs, reduction='none')
                 pseudo_loss_KD_vector_reshape = torch.reshape(pseudo_loss_KD_vector, (-1, 1))
                 
                 
@@ -222,7 +229,8 @@ def revar():
             
             combined_inputs = torch.cat((teacher_logs , rho_logs , logs),1) 
             
-            loss_CE_vector = functional.cross_entropy(outputs, labels.long(), reduction='none')
+            #loss_CE_vector = functional.cross_entropy(outputs, labels.long(), reduction='none')
+            loss_CE_vector = functional.cross_entropy(logs, labels.long(), reduction='none')
             loss_CE_vector_reshape = torch.reshape(loss_CE_vector, (-1, 1))
 
             
@@ -232,7 +240,8 @@ def revar():
                 else:
                     alpha , beta  = meta_net(combined_inputs)
                     
-            loss_KD_vector = functional.kl_div(outputs , beta*outputs + (1- beta)*teacher_output, reduction='none')
+            #loss_KD_vector = functional.kl_div(outputs , beta*outputs + (1- beta)*teacher_output, reduction='none')
+            loss_KD_vector = functional.kl_div(logs , beta*logs + (1- beta)*teacher_logs, reduction='none')
             loss_KD_vector_reshape = torch.reshape(loss_KD_vector, (-1, 1))
                 
                 

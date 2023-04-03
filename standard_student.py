@@ -121,7 +121,8 @@ def standard_student():
             #outputs = torch.div(logs, tou)
             outputs= nn.Softmax(logs)
             
-            loss_CE_vector = functional.cross_entropy(outputs, labels.long(), reduction='none')
+            #loss_CE_vector = functional.cross_entropy(outputs, labels.long(), reduction='none')
+            loss_CE_vector = functional.cross_entropy(logs, labels.long(), reduction='none')
             loss_CE_vector_reshape = torch.reshape(loss_CE_vector, (-1, 1))
                 
             loss_CE = torch.mean(loss_CE_vector_reshape)

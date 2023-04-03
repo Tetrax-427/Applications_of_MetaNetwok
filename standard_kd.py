@@ -1,6 +1,6 @@
 import argparse
 import torch.optim
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as functional
 import torch.nn as nn
 
@@ -8,8 +8,8 @@ from meta import *
 from model import *
 from data import *
 from utils import *
-from rho import *
-from Teacher import *
+#from rho import *
+#from Teacher import *
 
 #for torch export LD_LIBRARY_PATH=/home/nishantjn/.local/lib/python3.8/site-packages/nvidia/cublas/lib/:$LD_LIBRARY_PATH
 
@@ -56,16 +56,22 @@ print(args)
 
 def standard_kd():
     tou = 1  # Tempetature of KD
-    
+    print("KD.....")
     set_cudnn(device=args.device)
     set_seed(seed=args.seed)
-    writer = SummaryWriter(log_dir='../logs')
+    #writer = SummaryWriter(log_dir='../logs')
 
     Path_teacher = "./teacher_model"
     
     Teacher=ResNet10_l( 10 ).to(args.device)
-    Teacher = torch.load(Path_teacher)
+    optimizer_T = torch.optim.SGD(Teacher.parameters(), lr=0.001, momentum=0.9)
+
+    checkpoint = torch.load(Path_teacher)
+
+    optimizer_T.load_state_dict(checkpoint['optimizer'])
+    Teacher.load_state_dict(checkpoint['state_dict'])
     
+    print("Teacher loaded....")
     net = ResNet10_xxs(args.num_classes).to(device=args.device)
 
     criterion = nn.CrossEntropyLoss().to(device=args.device)
@@ -129,12 +135,14 @@ def standard_kd():
 
             logs = net(inputs)
             outputs = torch.div(logs, tou)
-            outputs= nn.Softmax(logs)
+            outputs= torch.nn.functional.softmax(outputs)
             
-            loss_CE_vector = functional.cross_entropy(outputs, labels.long(), reduction='none')
+            #loss_CE_vector = functional.cross_entropy( labels.long(), outputs,reduction='none')
+            loss_CE_vector = functional.cross_entropy(logs, labels.long(), reduction='none')
             loss_CE_vector_reshape = torch.reshape(loss_CE_vector, (-1, 1))
 
-            loss_KD_vector = functional.kl_div(outputs , teacher_output, reduction='none')
+            #loss_KD_vector = functional.kl_div(outputs , teacher_output, reduction='none')
+            loss_KD_vector = functional.kl_div(logs , teacher_logs, reduction='none')
             loss_KD_vector_reshape = torch.reshape(loss_KD_vector, (-1, 1))
                 
             loss_CE = torch.mean(loss_CE_vector_reshape)
@@ -182,5 +190,5 @@ def standard_kd():
     #writer.close()
 
 
-if __name__ == '__main__':
-    standard_kd()
+
+standard_kd()

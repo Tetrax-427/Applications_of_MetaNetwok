@@ -46,8 +46,8 @@ def train_teacher(model):
             input_size=args.input_size,
         )
 
-    for epoch in range(100):  # loop over the dataset multiple times
-    
+    for epoch in range(10):  # loop over the dataset multiple times
+        print(epoch)
         for group in optimizer_T.param_groups:
             group['lr'] = lr
 
@@ -66,7 +66,7 @@ def train_teacher(model):
             optimizer_T.zero_grad()
             loss.backward()
             optimizer_T.step()
-
+        
         print('Computing Test Result...')
         test_loss, test_accuracy = compute_loss_accuracy(
                 net=Teacher,
@@ -74,7 +74,7 @@ def train_teacher(model):
                 criterion=criterion_T,
                 device=args.device,
         )
-        
+        print(test_loss, test_accuracy )
         checkpoint = { 'state_dict': Teacher.state_dict(),'optimizer' :optimizer_T.state_dict()}
         torch.save(checkpoint, PATH)
     
@@ -86,4 +86,4 @@ Teacher=ResNet10_l( 10 )
 Teacher.to(args.device)
 train_teacher(Teacher)
 #checkpoint = {'state_dict': Teacher.state_dict(),'optimizer' :optimizer_T.state_dict()}
-#torch.save(checkpoint, PATH)
+#torch.save(checkpoint, PATH)                                                            
